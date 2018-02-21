@@ -282,8 +282,24 @@ namespace Simplify
 {
 	// Global Variables & Strctures
 
-	struct Triangle { int v[3];double err[4];int deleted,dirty;vec3f n; };
-	struct Vertex { vec3f p;int tstart,tcount;SymetricMatrix q;int border;};
+	struct Triangle { 
+	  int v[3];
+	  double err[4];
+	  int deleted,
+	    dirty;
+	  vec3f n; 
+	};
+
+	struct Vertex { 
+	  vec3f p;
+	  SymetricMatrix q;
+	  int border;
+	  int tstart,tcount;
+	  
+	  bool used;
+	  int new_index;
+	};
+
 	struct Ref { int tid,tvertex; };
 	std::vector<Triangle> triangles;
 	std::vector<Vertex> vertices;
@@ -305,6 +321,12 @@ namespace Simplify
 	//                 5..8 are good numbers
 	//                 more iterations yield higher quality
 	//
+
+	void swap(std::vector<Vertex>& new_vertices, std::vector<Triangle>& new_triangles)
+	{
+	  triangles.swap(new_triangles);
+	  vertices.swap(new_vertices);
+	}
 
 	void simplify_mesh(int target_count, double agressiveness=7, bool verbose=false)
 	{
