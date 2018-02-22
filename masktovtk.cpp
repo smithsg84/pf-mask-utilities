@@ -9,12 +9,16 @@
 
 using namespace std;
 
-#define vertexIndex(i, j, k) (((nx+1) * (ny+1) * (k)) + ((j) * (ny+1)) + (i))
-#define triangleIndex(i, j, k) ((nx * ny * (k)) + ((j) * ny) + (i))
+#define vertexIndex(i, j, k) (((nx+1) * (ny+1) * (k)) + ((j) * (nx+1)) + (i))
+#define triangleIndex(i, j, k) ((nx * ny * (k)) + ((j) * nx) + (i))
+
+typedef std::numeric_limits< double > dbl;
 
 void writeVTK(string filename, vector<Simplify::Vertex>* vertices, vector<Simplify::Triangle>* triangles)
 {
   ofstream vtkFile(filename);
+
+  vtkFile.precision(dbl::max_digits10);
 
   vtkFile << "# vtk DataFile Version 2.0" << std::endl;
   vtkFile << filename << std::endl;
@@ -51,7 +55,8 @@ int main(int argc, char **argv)
 
   int nx, ny, nz;
   double sx = 0, sy = 0, sz = 0;
-  double dx = 1000.0, dy = 1000.0 , dz = 1000.0;
+  //double dx = 1000.0, dy = 1000.0 , dz = 1000.0;
+  double dx = 1.0, dy = 1.0 , dz = 1.0;
 
   mask >> nx >> ny >> nz;
 
@@ -61,9 +66,9 @@ int main(int argc, char **argv)
 
   vector<char> indicators(nx*ny);
 
-  for(int i = 0; i < nx; ++i)
+  for(int j = 0; j < ny; ++j)
   {
-    for(int j = 0; j < ny; ++j)
+    for(int i = 0; i < nx; ++i)
     {
       int indicator;
       mask >> indicator;
@@ -124,7 +129,7 @@ int main(int argc, char **argv)
 	}
 #endif
 
-#if 1
+#if 0
 	// Bottom
 	{
 	  Simplify::Triangle triangle;
@@ -145,9 +150,7 @@ int main(int argc, char **argv)
 	  (*vertices)[ vertexIndex(i,j+1,0)].used = true;
 	  (*vertices)[ vertexIndex(i+1,j+1,0)].used = true;
 	}
-#endif
 
-#if 1
 	// Left
 	if ( (i == 0) || (indicators[ triangleIndex(i-1,j,0) ] == 1) )
 	{
@@ -191,9 +194,7 @@ int main(int argc, char **argv)
 	  (*vertices)[ vertexIndex(i+1,j+1,0)].used = true;
 	  (*vertices)[ vertexIndex(i+1,j+1,1)].used = true;
 	}
-#endif
 
-#if 1
 	// Front
 	if ( (j==0) || (indicators[ triangleIndex(i,j-1,0) ] == 1) )
 	{
@@ -269,7 +270,7 @@ int main(int argc, char **argv)
 
   Simplify::swap(*new_vertices, *triangles);
 
-  Simplify::simplify_mesh_lossless();
+  //Simplify::simplify_mesh_lossless();
 
   writeVTK(outFilename, &Simplify::vertices, &Simplify::triangles);
 }

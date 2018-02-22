@@ -1,9 +1,16 @@
 
-test: masktovtk pfsoltovtk
+test: masktovtk pfsoltovtk maskdownsize
 	./masktovtk mask-test-1.txt mask-test-1.vtk
 	./masktovtk mask-test-2.txt mask-test-2.vtk
 	./masktovtk mask-test-3.txt mask-test-3.vtk
 	./masktovtk mask-test-4.txt mask-test-4.vtk
+	./masktovtk mask-test-5.txt mask-test-5.vtk
+	./masktovtk mask-test-6.txt mask-test-6.vtk
+
+test2: masktovtk pfsoltovtk maskdownsize
+	./maskdownsize mask.NA_1km.txt test.txt
+	./masktovtk test.txt test.vtk
+	paraview test.vtk 
 
 clean:
 	rm -f *.vtk
@@ -11,7 +18,10 @@ clean:
 	rm -f pfsoltovtk
 
 masktovtk: masktovtk.cpp simplify.h
-	g++ -std=c++11 masktovtk.cpp -o masktovtk
+	g++ -O3 -std=c++11 masktovtk.cpp -o masktovtk
+
+maskdownsize: maskdownsize.cpp
+	g++ -O3 -std=c++11 maskdownsize.cpp -o maskdownsize
 
 pfsoltovtk: pfsoltovtk.c
-	gcc  pfsoltovtk.c -o pfsoltovtk
+	gcc -O3  pfsoltovtk.c -o pfsoltovtk
