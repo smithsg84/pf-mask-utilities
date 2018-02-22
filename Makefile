@@ -16,6 +16,7 @@ clean:
 	rm -f *.vtk
 	rm -f masktovtk
 	rm -f pfsoltovtk
+	rm -f maskdownsize
 
 masktovtk: masktovtk.cpp simplify.h
 	g++ -O3 -std=c++11 masktovtk.cpp -o masktovtk

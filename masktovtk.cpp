@@ -55,8 +55,7 @@ int main(int argc, char **argv)
 
   int nx, ny, nz;
   double sx = 0, sy = 0, sz = 0;
-  //double dx = 1000.0, dy = 1000.0 , dz = 1000.0;
-  double dx = 1.0, dy = 1.0 , dz = 1.0;
+  double dx = 1000.0, dy = 1000.0 , dz = 1000.0;
 
   mask >> nx >> ny >> nz;
 
@@ -129,7 +128,7 @@ int main(int argc, char **argv)
 	}
 #endif
 
-#if 0
+#if 1
 	// Bottom
 	{
 	  Simplify::Triangle triangle;
@@ -270,7 +269,7 @@ int main(int argc, char **argv)
 
   Simplify::swap(*new_vertices, *triangles);
 
-  //Simplify::simplify_mesh_lossless();
+  Simplify::simplify_mesh_lossless();
 
   writeVTK(outFilename, &Simplify::vertices, &Simplify::triangles);
 }
