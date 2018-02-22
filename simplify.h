@@ -288,6 +288,8 @@ namespace Simplify
 	  int deleted,
 	    dirty;
 	  vec3f n; 
+
+	  int patch;
 	};
 
 	struct Vertex { 

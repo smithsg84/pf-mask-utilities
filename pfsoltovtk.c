@@ -61,7 +61,6 @@ int main(int argc, char** argv)
       {
 	 int t;
 	 fscanf(inFile, "%d", &t);
-	 printf("\t\t%d\n", t);
       }
    }
 

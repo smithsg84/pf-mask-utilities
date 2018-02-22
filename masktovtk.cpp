@@ -14,6 +14,70 @@ using namespace std;
 
 typedef std::numeric_limits< double > dbl;
 
+void writePFSOL(string filename, vector<Simplify::Vertex>* vertices, vector<Simplify::Triangle>* triangles)
+{
+  ofstream pfsolFile(filename);
+  pfsolFile.precision(dbl::max_digits10);
+
+  // Version
+  pfsolFile << "1" << std::endl;
+
+  pfsolFile << vertices -> size() << std::endl;
+
+  for (auto it = vertices->begin(); it != vertices->end(); ++it)
+  {
+    double x = (*it).p.x;
+    double y = (*it).p.y;
+    double z = (*it).p.z;
+
+    pfsolFile << x << " " << y << " " << z << std::endl;
+  }
+
+  // Number of solids
+  pfsolFile << "1" << std::endl;
+
+  pfsolFile << triangles -> size() << std::endl;
+
+  for (auto it = triangles -> begin(); it != triangles -> end(); ++it)
+  {
+    pfsolFile << (*it).v[0]  << " " << (*it).v[1] << " " << (*it).v[2] << std::endl;
+  }
+
+  // Number of patches
+  
+  // This looping is not very efficient but would require some extra data structures to eliminate.
+  pfsolFile << "3" << std::endl;
+  for(int patch = 1; patch < 4; ++patch)
+  {
+    int numTriangles = 0;
+    for (auto it = triangles -> begin(); it != triangles -> end(); ++it)
+    {
+      if((*it).patch == patch)
+      {
+	numTriangles++;
+      }
+    }
+    
+    pfsolFile << numTriangles << std::endl;
+
+    std::cout << "Number of triangles in patch " << patch << " = " << numTriangles << std::endl;
+
+    int index = 0;
+    for (auto it = triangles -> begin(); it != triangles -> end(); ++it)
+    {
+      if((*it).patch == patch)
+      {
+	pfsolFile << index << std::endl;
+      }
+
+      ++index;
+    }
+    
+  }
+
+  pfsolFile.close();
+}
+
 void writeVTK(string filename, vector<Simplify::Vertex>* vertices, vector<Simplify::Triangle>* triangles)
 {
   ofstream vtkFile(filename);
@@ -47,9 +111,9 @@ void writeVTK(string filename, vector<Simplify::Vertex>* vertices, vector<Simpli
 
 int main(int argc, char **argv)
 {
-
   string inFilename(argv[1]);
-  string outFilename(argv[2]);
+  string vtkOutFilename(argv[2]);
+  string pfsolOutFilename(argv[3]);
 
   ifstream mask(inFilename);
 
@@ -104,11 +168,11 @@ int main(int argc, char **argv)
 
       if (indicator == 2 )
       {
-
-#if 1
 	// Top
 	{
 	  Simplify::Triangle triangle;
+	  triangle.patch = 1;
+
 	  triangle.v[0] = vertexIndex(i,j,1);
 	  triangle.v[1]=  vertexIndex(i+1,j,1);
 	  triangle.v[2]=  vertexIndex(i+1,j+1,1);
@@ -126,21 +190,21 @@ int main(int argc, char **argv)
 	  (*vertices)[ vertexIndex(i,j+1,1)].used = true;
 	  (*vertices)[ vertexIndex(i+1,j+1,1)].used = true;
 	}
-#endif
 
-#if 1
 	// Bottom
 	{
 	  Simplify::Triangle triangle;
-	  triangle.v[0] = vertexIndex(i,j,0);
-	  triangle.v[1]=  vertexIndex(i+1,j,0);
-	  triangle.v[2]=  vertexIndex(i+1,j+1,0);
-	  
-	  triangles -> push_back(triangle);
-	  
+	  triangle.patch = 2;
+
 	  triangle.v[0] = vertexIndex(i,j,0);
 	  triangle.v[1]=  vertexIndex(i+1,j+1,0);
-	  triangle.v[2]=  vertexIndex(i,j+1,0);
+	  triangle.v[2]=  vertexIndex(i+1,j,0);
+	  
+	  triangles -> push_back(triangle);
+
+	  triangle.v[0] = vertexIndex(i,j,0);
+	  triangle.v[1]=  vertexIndex(i,j+1,0);	  
+	  triangle.v[2]=  vertexIndex(i+1,j+1,0);
 
 	  triangles -> push_back(triangle);
 
@@ -154,6 +218,8 @@ int main(int argc, char **argv)
 	if ( (i == 0) || (indicators[ triangleIndex(i-1,j,0) ] == 1) )
 	{
 	  Simplify::Triangle triangle;
+	  triangle.patch = 3;
+
 	  triangle.v[0] = vertexIndex(i,j,0);
 	  triangle.v[1]=  vertexIndex(i,j,1);
 	  triangle.v[2]=  vertexIndex(i,j+1,0);
@@ -161,8 +227,8 @@ int main(int argc, char **argv)
 	  triangles -> push_back(triangle);
 
 	  triangle.v[0] = vertexIndex(i,j,1);
-	  triangle.v[1]=  vertexIndex(i,j+1,0);
-	  triangle.v[2]=  vertexIndex(i,j+1,1);
+	  triangle.v[1]=  vertexIndex(i,j+1,1);
+	  triangle.v[2]=  vertexIndex(i,j+1,0);
 
 	  triangles -> push_back(triangle);
 
@@ -176,9 +242,11 @@ int main(int argc, char **argv)
 	if ( (i == (nx - 1)) || (indicators[ triangleIndex(i+1,j,0) ] == 1) )
 	{
 	  Simplify::Triangle triangle;
-	  triangle.v[0] = vertexIndex(i+1,j,0);
+	  triangle.patch = 3;
+
+	  triangle.v[0]=  vertexIndex(i+1,j+1,0);
 	  triangle.v[1]=  vertexIndex(i+1,j,1);
-	  triangle.v[2]=  vertexIndex(i+1,j+1,0);
+	  triangle.v[2] = vertexIndex(i+1,j,0);
 	  
 	  triangles -> push_back(triangle);
 
@@ -198,6 +266,8 @@ int main(int argc, char **argv)
 	if ( (j==0) || (indicators[ triangleIndex(i,j-1,0) ] == 1) )
 	{
 	  Simplify::Triangle triangle;
+	  triangle.patch = 3;
+
 	  triangle.v[0] = vertexIndex(i,j,0);
 	  triangle.v[1]=  vertexIndex(i+1,j,0);
 	  triangle.v[2]=  vertexIndex(i+1,j,1);
@@ -220,15 +290,17 @@ int main(int argc, char **argv)
 	if ( (j == (ny - 1)) || (indicators[ triangleIndex(i,j+1,0) ] == 1) )
 	{
 	  Simplify::Triangle triangle;
-	  triangle.v[0] = vertexIndex(i,j+1,0);
+	  triangle.patch = 3;
+
+	  triangle.v[2] = vertexIndex(i,j+1,0);
 	  triangle.v[1]=  vertexIndex(i+1,j+1,0);
-	  triangle.v[2]=  vertexIndex(i+1,j+1,1);
+	  triangle.v[0]=  vertexIndex(i+1,j+1,1);
 	  
 	  triangles -> push_back(triangle);
 
-	  triangle.v[0] = vertexIndex(i,j+1,0);
+	  triangle.v[2] = vertexIndex(i,j+1,0);
 	  triangle.v[1]=  vertexIndex(i+1,j+1,1);
-	  triangle.v[2]=  vertexIndex(i,j+1,1);
+	  triangle.v[0]=  vertexIndex(i,j+1,1);
 
 	  triangles -> push_back(triangle);
 
@@ -237,7 +309,6 @@ int main(int argc, char **argv)
 	  (*vertices)[ vertexIndex(i+1,j+1,0)].used = true;
 	  (*vertices)[ vertexIndex(i+1,j+1,1)].used = true;
 	}
-#endif
       }
     }
   }
@@ -265,11 +336,10 @@ int main(int argc, char **argv)
 
   vertices = 0;
 
-  //writeVTK("test-1.vtk", new_vertices, triangles);
-
   Simplify::swap(*new_vertices, *triangles);
 
   Simplify::simplify_mesh_lossless();
 
-  writeVTK(outFilename, &Simplify::vertices, &Simplify::triangles);
+  writeVTK(vtkOutFilename, &Simplify::vertices, &Simplify::triangles);
+  writePFSOL(pfsolOutFilename, &Simplify::vertices, &Simplify::triangles);
 }
