@@ -7,6 +7,8 @@ TESTS=mask-test-1.pfsol \
 	mask-test-6.pfsol \
 	mask-test-7.pfsol
 
+all : ascmask-to-pfsol pfsol-to-vtk maskdownsize
+
 test: ascmask-to-pfsol pfsol-to-vtk maskdownsize
 	rm -f $(TESTS)
 	make $(TESTS)
@@ -15,11 +17,6 @@ test: ascmask-to-pfsol pfsol-to-vtk maskdownsize
 	./ascmask-to-pfsol $< $(patsubst %.pfsol,%.vtk,$@) $@ 
 	cmp $@ regression-test/$@
 	cmp $(patsubst %.pfsol,%.vtk,$@) regression-test/$(patsubst %.pfsol,%.vtk,$@)
-
-test2: ascmask-to-pfsol pfsol-to-vtk maskdownsize
-	./maskdownsize mask.NA_1km.txt test.txt
-	./ascmask-to-pfsol test.txt test.vtk
-	paraview test.vtk 
 
 clean:
 	rm -f *.vtk *.pfsol
