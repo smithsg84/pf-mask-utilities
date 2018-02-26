@@ -14,6 +14,11 @@ using namespace std;
 
 typedef std::numeric_limits< double > dbl;
 
+bool equal(double a, double b)
+{
+    return fabs(a - b) < DBL_EPSILON;
+}
+
 void writePFSOL(string filename, vector<Simplify::Vertex>* vertices, vector<Simplify::Triangle>* triangles)
 {
   ofstream pfsolFile(filename);
@@ -114,6 +119,9 @@ int main(int argc, char **argv)
   string inFilename(argv[1]);
   string vtkOutFilename(argv[2]);
   string pfsolOutFilename(argv[3]);
+  double maskValue = 1;
+
+  cout << "Reading file " << inFilename << std::endl;
 
   ifstream mask(inFilename);
 
@@ -121,9 +129,22 @@ int main(int argc, char **argv)
   double sx = 0, sy = 0, sz = 0;
   double dx = 1000.0, dy = 1000.0 , dz = 1000.0;
 
-  mask >> nx >> ny >> nz;
+  string text;
 
-  cout << "NX = " << nx << " NY =" << ny << " NZ = " << nz << std::endl;
+  mask >> text >> nx;
+  mask >> text >> ny;
+  nz = 1;
+
+  mask >> text >> text;
+  mask >> text >> text;
+  
+  mask >> text >> dx;
+  dy = dz = dx;
+  
+  mask >> text >> text;
+
+  cout << "Domain Size = (" << nx << "," << ny << "," << nz << ")" << std::endl;
+  cout << "Cell Size = (" << dx << "," << dy << "," << dz << ")" << std::endl;
 
   assert(nz == 1);
 
@@ -133,11 +154,15 @@ int main(int argc, char **argv)
   {
     for(int i = 0; i < nx; ++i)
     {
-      int indicator;
+      double indicator;
       mask >> indicator;
-      indicators[ triangleIndex(i,j,0) ] = indicator;
+      // ASC files are flipped around J axis from PF ordering
+      int flipped_j = (ny - 1) - j;
+      indicators[ triangleIndex(i,flipped_j,0) ] = equal(indicator, maskValue);
     }
   }
+
+  cout << endl;
 
   vector<Simplify::Vertex>* vertices = new vector<Simplify::Vertex>((nx+1)*(ny+1)*(nz+1));
 
@@ -166,7 +191,7 @@ int main(int argc, char **argv)
     {
       int indicator = indicators[ triangleIndex(i,j,0) ];
 
-      if (indicator == 2 )
+      if (indicator == 1 )
       {
 	// Top
 	{
@@ -215,7 +240,7 @@ int main(int argc, char **argv)
 	}
 
 	// Left
-	if ( (i == 0) || (indicators[ triangleIndex(i-1,j,0) ] == 1) )
+	if ( (i == 0) || (indicators[ triangleIndex(i-1,j,0) ] == 0) )
 	{
 	  Simplify::Triangle triangle;
 	  triangle.patch = 3;
@@ -239,7 +264,7 @@ int main(int argc, char **argv)
 	}
 
 	// Right
-	if ( (i == (nx - 1)) || (indicators[ triangleIndex(i+1,j,0) ] == 1) )
+	if ( (i == (nx - 1)) || (indicators[ triangleIndex(i+1,j,0) ] == 0) )
 	{
 	  Simplify::Triangle triangle;
 	  triangle.patch = 3;
@@ -263,7 +288,7 @@ int main(int argc, char **argv)
 	}
 
 	// Front
-	if ( (j==0) || (indicators[ triangleIndex(i,j-1,0) ] == 1) )
+	if ( (j==0) || (indicators[ triangleIndex(i,j-1,0) ] == 0) )
 	{
 	  Simplify::Triangle triangle;
 	  triangle.patch = 3;
@@ -287,7 +312,7 @@ int main(int argc, char **argv)
 	}
 
 	// Back
-	if ( (j == (ny - 1)) || (indicators[ triangleIndex(i,j+1,0) ] == 1) )
+	if ( (j == (ny - 1)) || (indicators[ triangleIndex(i,j+1,0) ] == 0) )
 	{
 	  Simplify::Triangle triangle;
 	  triangle.patch = 3;
