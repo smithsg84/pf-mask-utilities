@@ -11,7 +11,7 @@
 //
 // 5/2016: Chris Rorden created minimal version for OSX/Linux/Windows compile
 
-//#include <iostream>
+#include <iostream>
 //#include <stddef.h>
 //#include <functional>
 //#include <sys/stat.h>
@@ -280,7 +280,7 @@ class SymetricMatrix {
 
 namespace Simplify
 {
-	// Global Variables & Strctures
+	// Global Variables & Strictures
 
 	struct Triangle { 
 	  int v[3];
@@ -292,6 +292,7 @@ namespace Simplify
 	  int patch;
 	};
 
+
 	struct Vertex { 
 	  vec3f p;
 	  SymetricMatrix q;
@@ -302,16 +303,47 @@ namespace Simplify
 	  int new_index;
 	};
 
+
 	struct Ref { int tid,tvertex; };
 	std::vector<Triangle> triangles;
 	std::vector<Vertex> vertices;
 	std::vector<Ref> refs;
 
+	double heron(double a, double b,double c)
+	{
+	  double s = (a + b + c) / 2;
+	  double area = sqrt((s*(s-a) * (s-b)*(s-c)));
+	  return area;
+	}
+
+	double distance3d(Vertex &v1, Vertex &v2)
+	{
+	  double a=pow(v1.p.x-v2.p.x, 2)+pow(v1.p.y-v2.p.y, 2) + pow(v1.p.z-v2.p.z, 2);
+	  double d= sqrt(a);
+	  return d;
+	}
+
+	double area(Triangle &t)
+	{
+	  int i0=t.v[ 0 ]; Vertex &v0 = vertices[i0];
+	  int i1=t.v[ 1 ]; Vertex &v1 = vertices[i1];
+	  int i2=t.v[ 2 ]; Vertex &v2 = vertices[i2];
+
+	  double a=distance3d(v0,v1);
+	  double b=distance3d(v1,v2);
+	  double c=distance3d(v2,v0);
+
+	  double A = heron(a,b,c);
+
+	  return A;
+	}
+
 	// Helper functions
 
 	double vertex_error(SymetricMatrix q, double x, double y, double z);
 	double calculate_error(int id_v1, int id_v2, vec3f &p_result);
-	bool flipped(vec3f p,int i0,int i1,Vertex &v0,Vertex &v1,std::vector<int> &deleted);
+        bool skipDifferentPatch(int i, Triangle &t, int i0, int i1,Vertex &v0,Vertex &v1);
+	bool flipped(Triangle &t0, vec3f p,int i0,int i1,Vertex &v0,Vertex &v1,std::vector<int> &deleted);
 	void update_triangles(int i0,Vertex &v,std::vector<int> &deleted,int &deleted_triangles);
 	void update_mesh(int iteration);
 	void compact_mesh();
@@ -389,9 +421,9 @@ namespace Simplify
 					deleted0.resize(v0.tcount); // normals temporarily
 					deleted1.resize(v1.tcount); // normals temporarily
 					// dont remove if flipped
-					if( flipped(p,i0,i1,v0,v1,deleted0) ) continue;
+					if( flipped(t, p,i0,i1,v0,v1,deleted0) ) continue;
 
-					if( flipped(p,i1,i0,v1,v0,deleted1) ) continue;
+					if( flipped(t, p,i1,i0,v1,v0,deleted1) ) continue;
 
 
 					// not flipped, so remove edge
@@ -449,24 +481,49 @@ namespace Simplify
 			//
 			double threshold = DBL_EPSILON; //1.0E-3 EPS;
 			if (verbose) {
-				printf("lossless iteration %d\n", iteration);
+			  std::cout << "------------------------------------------" << std::endl;
+			  printf("lossless iteration %d\n", iteration);
 			}
 
 			// remove vertices & mark deleted triangles
 			loopi(0,triangles.size())
 			{
 				Triangle &t=triangles[i];
+
+				if (verbose) {
+				  std::cout << "\t[ " << i << "].err " << t.err[3] << std::endl;
+				  std::cout << "\t[ " << i << "].deleted " << t.deleted << std::endl;
+				  std::cout << "\t[ " << i << "].dirty " << t.dirty << std::endl;
+				}
+				
 				if(t.err[3]>threshold) continue;
 				if(t.deleted) continue;
 				if(t.dirty) continue;
 
 				loopj(0,3)if(t.err[j]<threshold)
 				{
+				  if (verbose) {
+				    std::cout << "\tloop j = " << j <<  std::endl;
+				  }
+
 					int i0=t.v[ j     ]; Vertex &v0 = vertices[i0];
 					int i1=t.v[(j+1)%3]; Vertex &v1 = vertices[i1];
 
+					if (verbose) {
+					  std::cout << "\tv0 (" << v0.p.x << "," << v0.p.y << "," << v0.p.z << ")" << std::endl;
+					  std::cout << "\tv1 (" << v1.p.x << "," << v1.p.y << "," << v1.p.z << ")" << std::endl;
+					}
+					
+
+					/* if( skipDifferentPatch(i, t, i0, i1, v0, v1) )  */
+					/* { */
+					/*   std::cout << "\tSkipping i0 " << i0 << " i1 " << i1 << std::endl; */
+					/*   continue; */
+					/* } */
+
 					// Border check
 					if(v0.border != v1.border)  continue;
+					if(v0.border || v1.border)  continue;
 
 					// Compute vertex to collapse to
 					vec3f p;
@@ -476,8 +533,8 @@ namespace Simplify
 					deleted1.resize(v1.tcount); // normals temporarily
 
 					// dont remove if flipped
-					if( flipped(p,i0,i1,v0,v1,deleted0) ) continue;
-					if( flipped(p,i1,i0,v1,v0,deleted1) ) continue;
+					if( flipped(t, p,i0,i1,v0,v1,deleted0) ) continue;
+					if( flipped(t, p,i1,i0,v1,v0,deleted1) ) continue;
 
 					// not flipped, so remove edge
 					v0.p=p;
@@ -486,6 +543,20 @@ namespace Simplify
 
 					update_triangles(i0,v0,deleted0,deleted_triangles);
 					update_triangles(i0,v1,deleted1,deleted_triangles);
+
+					if (verbose) {
+					  for(int z = 0; z < deleted0.size(); ++z)
+					  {
+					    std::cout << "\t\t\tdeleted0[" << z << "]=" << deleted0[z] << std::endl;
+					  }
+					  
+					  for(int z = 0; z < deleted1.size(); ++z)
+					  {
+					    std::cout << "\t\t\tdeleted1[" << z << "]=" << deleted1[z] << std::endl;
+					  }
+					  
+					  std::cout << "\tDeleted triangles = " << deleted_triangles << std::endl;
+					}
 
 					int tcount=refs.size()-tstart;
 
@@ -502,6 +573,9 @@ namespace Simplify
 					break;
 				}
 			}
+			if (verbose) {
+			  std::cout << "Deleted triangles = " << deleted_triangles << std::endl;
+			}
 			if(deleted_triangles<=0)break;
 			deleted_triangles=0;
 		} //for each iteration
@@ -509,10 +583,73 @@ namespace Simplify
 		compact_mesh();
 	} //simplify_mesh_lossless()
 
+	// Check if a triangles are in same patch and OK to process
+	// Hacking in a check to see if edge is on same patch.
+        bool skipDifferentPatch(int tid, Triangle &t, int i0, int i1,Vertex &v0,Vertex &v1)
+	{
+
+	  //std::cout << "Checking edge " << i0 << "," << i1 << std::endl;
+
+	  if(i0 == i1)
+	  {
+	    return false;
+	  }
+
+	  loopk(0,v0.tcount)
+	  {
+	    Triangle &tk=triangles[refs[v0.tstart+k].tid];
+
+	    int s=refs[v0.tstart+k].tvertex;
+	    int id1=t.v[(s+1)%3];
+	    int id2=t.v[(s+2)%3];
+	    
+	    if(id1==i1 || id2==i1)
+	    {
+	      if (t.patch != tk.patch)
+	      {
+		if (0) {
+		  std::cout << "t.tid " << tid << " tk.tid " << refs[v0.tstart+k].tid << std::endl;
+
+		  std::cout << "t.patch " << t.patch << " tk.patch " << tk.patch << std::endl;
+
+		  std::cout << "Area of t " << area(t) << std::endl;
+		  std::cout << "Area of tk " << area(tk) << std::endl;
+
+		  std::cout << std::endl;
+		}
+		  
+		return false;
+	      }
+	    }
+
+
+	    // // If same edge check patch
+	    // if ( ( i0 == tk.v[0] || i0 == tk.v[1] || i0 == tk.v[2] ) && 
+	    // 	 ( i1 == tk.v[0] || i1 == tk.v[1] || i1 == tk.v[2] ) )
+	    //   {
+	    // 	if (t.patch != tk.patch)
+	    // 	{
+
+	    // 	  std::cout << "t.tid " << tid << " tk.tid " << refs[v0.tstart+k].tid << std::endl;
+
+	    // 	  std::cout << "t.patch " << t.patch << " tk.patch " << tk.patch << std::endl;
+
+	    // 	  std::cout << "Area of t " << area(t) << std::endl;
+	    // 	  std::cout << "Area of tk " << area(tk) << std::endl;
+
+	    // 	  std::cout << std::endl;
+		  
+	    // 	  return false;
+	    // 	}
+	    //   }
+	  }
+	  // Already deleted so normal processing.
+	  return false;
+	}
 
 	// Check if a triangle flips when this edge is removed
 
-	bool flipped(vec3f p,int i0,int i1,Vertex &v0,Vertex &v1,std::vector<int> &deleted)
+	bool flipped(Triangle &t0, vec3f p,int i0,int i1,Vertex &v0,Vertex &v1,std::vector<int> &deleted)
 	{
 
 		loopk(0,v0.tcount)
@@ -526,9 +663,25 @@ namespace Simplify
 
 			if(id1==i1 || id2==i1) // delete ?
 			{
+			  /* if(t0.patch != t.patch) */
+			  /* { */
+			  /*   if (verbose) { */
+			  /*   std::cout << "patch t0 " << t0.patch << " t1 " << t.patch << std::endl; */
+			  /*   //   std::cout << "Deleting " << k << std::endl; */
+			  /*   //   std::cout << "Skipping i0 " << i0 << " i1 " << i1 << std::endl; */
 
-				deleted[k]=1;
-				continue;
+			  /*   //   std::cout << "Area of t " << area(t0) << std::endl; */
+			  /*   //   std::cout << "Area of tk " << area(t) << std::endl; */
+			  /*   } */
+
+			  /*   deleted[k]=0; */
+			  /*   return true; */
+			  /* } */
+			  /* else */
+			  {
+			    deleted[k]=1;
+			  }
+			  continue;
 			}
 			vec3f d1 = vertices[id1].p-p; d1.normalize();
 			vec3f d2 = vertices[id2].p-p; d2.normalize();
@@ -659,12 +812,27 @@ namespace Simplify
 			loopi(0,vertices.size())
 			{
 				Vertex &v=vertices[i];
+				
 				vcount.clear();
 				vids.clear();
+				int patchColor = -1;
+				bool patchBoarder = false;
 				loopj(0,v.tcount)
 				{
 					int k=refs[v.tstart+j].tid;
 					Triangle &t=triangles[k];
+
+					// SGS added patch check for setting extra border vertices
+					if (patchColor == -1)
+					{
+					  patchColor = t.patch;
+					}
+					
+					if (patchColor != t.patch)
+					{
+					  patchBoarder = true;
+					}
+
 					loopk(0,3)
 					{
 						int ofs=0,id=t.v[k];
@@ -684,6 +852,16 @@ namespace Simplify
 				}
 				loopj(0,vcount.size()) if(vcount[j]==1)
 					vertices[vids[j]].border=1;
+
+				// SGS added patch check for setting extra border vertices
+				// This is currently overly conservative 
+				if (patchBoarder)
+				{
+				  loopj(0,vids.size())
+				  {
+				    vertices[vids[j]].border=1;
+				  }
+				}
 			}
 		}
 	}

@@ -138,6 +138,15 @@ void writeVTK(string filename, vector<Simplify::Vertex>* vertices, vector<Simpli
     vtkFile << "3 " <<   (*it).v[0]  << " " << (*it).v[1] << " " << (*it).v[2] << std::endl;
   }
 
+  // Write out patch labeling
+  vtkFile << "CELL_DATA " << triangles -> size() << std::endl;
+  vtkFile << "SCALARS patch_index int 1" << std::endl;
+  vtkFile << "LOOKUP_TABLE default" << std::endl;
+  for (auto it = triangles -> begin(); it != triangles -> end(); ++it)
+  {
+    vtkFile << (*it).patch << std::endl;
+  }
+
   vtkFile.close();
 }
 
@@ -146,7 +155,9 @@ int main(int argc, char **argv)
   string inFilename(argv[1]);
   string vtkOutFilename(argv[2]);
   string pfsolOutFilename(argv[3]);
-  double maskValue = 1;
+
+  int bottom = 2;
+  int side = 3;
 
   cout << "Reading file " << inFilename << std::endl;
 
@@ -175,7 +186,7 @@ int main(int argc, char **argv)
 
   assert(nz == 1);
 
-  vector<char> indicators(nx*ny);
+  vector<int> indicators(nx*ny);
 
   for(int j = 0; j < ny; ++j)
   {
@@ -185,7 +196,7 @@ int main(int argc, char **argv)
       mask >> indicator;
       // ASC files are flipped around J axis from PF ordering
       int flipped_j = (ny - 1) - j;
-      indicators[ triangleIndex(i,flipped_j,0) ] = equal(indicator, maskValue);
+      indicators[ triangleIndex(i,flipped_j,0) ] = indicator;
     }
   }
 
@@ -218,12 +229,12 @@ int main(int argc, char **argv)
     {
       int indicator = indicators[ triangleIndex(i,j,0) ];
 
-      if (indicator == 1 )
+      if (indicator != 0 )
       {
 	// Top
 	{
 	  Simplify::Triangle triangle;
-	  triangle.patch = 1;
+	  triangle.patch = indicator;
 
 	  triangle.v[0] = vertexIndex(i,j,1);
 	  triangle.v[1]=  vertexIndex(i+1,j,1);
@@ -246,7 +257,7 @@ int main(int argc, char **argv)
 	// Bottom
 	{
 	  Simplify::Triangle triangle;
-	  triangle.patch = 2;
+	  triangle.patch = bottom;
 
 	  triangle.v[0] = vertexIndex(i,j,0);
 	  triangle.v[1]=  vertexIndex(i+1,j+1,0);
@@ -270,7 +281,7 @@ int main(int argc, char **argv)
 	if ( (i == 0) || (indicators[ triangleIndex(i-1,j,0) ] == 0) )
 	{
 	  Simplify::Triangle triangle;
-	  triangle.patch = 3;
+	  triangle.patch = side;
 
 	  triangle.v[0] = vertexIndex(i,j,0);
 	  triangle.v[1]=  vertexIndex(i,j,1);
@@ -294,7 +305,7 @@ int main(int argc, char **argv)
 	if ( (i == (nx - 1)) || (indicators[ triangleIndex(i+1,j,0) ] == 0) )
 	{
 	  Simplify::Triangle triangle;
-	  triangle.patch = 3;
+	  triangle.patch = side;
 
 	  triangle.v[0]=  vertexIndex(i+1,j+1,0);
 	  triangle.v[1]=  vertexIndex(i+1,j,1);
@@ -318,7 +329,7 @@ int main(int argc, char **argv)
 	if ( (j==0) || (indicators[ triangleIndex(i,j-1,0) ] == 0) )
 	{
 	  Simplify::Triangle triangle;
-	  triangle.patch = 3;
+	  triangle.patch = side;
 
 	  triangle.v[0] = vertexIndex(i,j,0);
 	  triangle.v[1]=  vertexIndex(i+1,j,0);
@@ -342,7 +353,7 @@ int main(int argc, char **argv)
 	if ( (j == (ny - 1)) || (indicators[ triangleIndex(i,j+1,0) ] == 0) )
 	{
 	  Simplify::Triangle triangle;
-	  triangle.patch = 3;
+	  triangle.patch = side;
 
 	  triangle.v[2] = vertexIndex(i,j+1,0);
 	  triangle.v[1]=  vertexIndex(i+1,j+1,0);

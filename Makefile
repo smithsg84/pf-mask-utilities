@@ -1,11 +1,7 @@
 SHELL := /bin/bash
 
-TESTS=mask-test-1.pfsol \
-	mask-test-2.pfsol \
-	mask-test-3.pfsol \
-	mask-test-4.pfsol \
-	mask-test-6.pfsol \
-	mask-test-7.pfsol
+TEST_FILES=$(wildcard *.asc)
+TESTS=$(sort $(subst .asc,.pfsol,$(TEST_FILES)))
 
 all : ascmask-to-pfsol pfsol-to-vtk maskdownsize
 
