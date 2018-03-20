@@ -24,10 +24,10 @@ SRC=mask-to-pfsol.cpp readdatabox.c databox.c tools_io.c
 HEADERS=databox.h parflow_config.h readdatabox.h simplify.h tools_io.h
 
 mask-to-pfsol: $(SRC) $(HEADERS)
-	g++ -g -Wno-write-strings -std=c++11 $(SRC) -o mask-to-pfsol
+	g++ -O3 -Wno-write-strings -std=c++11 $(SRC) -o mask-to-pfsol
 
 maskdownsize: maskdownsize.cpp 
-	g++ -g -std=c++11 maskdownsize.cpp -o maskdownsize
+	g++ -O3 -std=c++11 maskdownsize.cpp -o maskdownsize
 
 pfsol-to-vtk: pfsol-to-vtk.c
 	gcc -O3  pfsol-to-vtk.c -o pfsol-to-vtk

@@ -1,14 +1,18 @@
 # ParFlow Mask Utilities
 
-### Building
+## Building
 
 Requires C++ compiler.
 
 make
 
-### Testing
+## Testing
 
 make test
+
+## mask-to-pfsol
+
+Utitility to build 3D PFSOL domain from 2D mask file.
 
 ### Usage
 
@@ -28,7 +32,7 @@ The VTK file output is also generated for easier visualization.  The
 VTK output includes the patch indices as data on the triangles making
 the patches viewable in many tools (such as Paraview, Visit).
 
-## ASC file format
+### ASC file format
 
 The input mask is an ASC file format with the following format:
 
@@ -42,7 +46,13 @@ NODATA_value  0.0
 
 A 0 value is outside the domain, any other value is inside the domain.
 
+## pfsol-to-vtk
 
+This utility is used to convert a PFSOL file to a VTK for easier visualization.
+
+### Usage
+
+pfsol-to-vtk <PFSOL input filename> <VTK output filename>
 
 
 
