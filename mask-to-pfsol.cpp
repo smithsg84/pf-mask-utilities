@@ -27,12 +27,76 @@
  **********************************************************************EHEADER*/
 
 #include "simplify.h"
+#include "error.h"
+#include "readdatabox.h"
 
 #include <vector>
 #include <algorithm>
 #include <iostream>
 #include <fstream>
 #include <cassert>
+
+
+/* Function IsValidFileType - This function is used to make sure a given file */
+/* type is a valid one.                                                       */
+/*                                                                            */
+/* Parameters                                                                 */
+/* ----------                                                                 */
+/* char *option - The file type option to be validated                        */
+/*                                                                            */
+/* Return value - int - One if the file type option is valid and zero other-  */
+/*                      wise                                                  */
+
+int IsValidFileType(
+                    char *option)
+{
+  if (strcmp(option, "pfb") == 0
+      || strcmp(option, "pfsb") == 0
+      || strcmp(option, "sa") == 0
+      || strcmp(option, "sa2d") == 0     // Added @ IMF
+      || strcmp(option, "sb") == 0
+      || strcmp(option, "fld") == 0
+      || strcmp(option, "vis") == 0
+      || strcmp(option, "asc") == 0
+#ifdef HAVE_SILO
+      || strcmp(option, "silo") == 0
+#endif
+      || strcmp(option, "rsa") == 0)
+    return(1);
+  else
+    return(0);
+}
+
+
+/* Function GetValidFileExtension - This function is used to determine the    */
+/* extension of any given file name and determine if it is valid.             */
+/*                                                                            */
+/* Parameters                                                                 */
+/* ----------                                                                 */
+/* char *filename - The filename whose extension will be determined           */
+/*                                                                            */
+/* Return value - char * - A valid file extension or null if the file's       */
+/*                         extension was invalid                              */
+
+char *GetValidFileExtension(
+char *filename)
+{
+  char *extension;
+
+  /* Point the last character of the string */
+  extension = filename + (strlen(filename) - 1);
+
+  while (*extension != '.' && extension != filename)
+    extension--;
+
+  extension++;
+
+  if (IsValidFileType(extension))
+    return(extension);
+
+  else
+    return(NULL);
+}
 
 using namespace std;
 
@@ -150,6 +214,43 @@ void writeVTK(string filename, vector<Simplify::Vertex>* vertices, vector<Simpli
   vtkFile.close();
 }
 
+
+Databox *loadFile(char* filename)
+{
+  double default_value = 0.0;
+  Databox    *databox;
+
+  char* filetype;
+  /* Make sure the file extension is valid */
+
+  if ((filetype = GetValidFileExtension(filename)) == (char*)NULL)
+  {
+    std::cerr << "Invalid file extension" << std::endl;
+    exit(-1);
+  }
+  
+  if (strcmp(filetype, "pfb") == 0)
+    databox = ReadParflowB(filename, default_value);
+  else if (strcmp(filetype, "pfsb") == 0)
+    databox = ReadParflowSB(filename, default_value);
+  else if (strcmp(filetype, "sa") == 0)
+    databox = ReadSimpleA(filename, default_value);
+  else if (strcmp(filetype, "sb") == 0)
+    databox = ReadSimpleB(filename, default_value);
+  else if (strcmp(filetype, "fld") == 0)
+    databox = ReadAVSField(filename, default_value);
+  else if (strcmp(filetype, "silo") == 0)
+    databox = ReadSilo(filename, default_value);
+  else if (strcmp(filetype, "asc") == 0)
+    databox = ReadASCMask(filename, default_value);
+  else
+    databox = ReadRealSA(filename, default_value);
+
+  return databox;
+
+}
+
+
 int main(int argc, char **argv)
 {
   string inFilename(argv[1]);
@@ -159,27 +260,23 @@ int main(int argc, char **argv)
   int bottom = 2;
   int side = 3;
 
-  cout << "Reading file " << inFilename << std::endl;
-
-  ifstream mask(inFilename);
-
   int nx, ny, nz;
   double sx = 0, sy = 0, sz = 0;
-  double dx = 1000.0, dy = 1000.0 , dz = 1000.0;
+  double dx, dy, dz;
 
-  string text;
+  Databox    *databox;
 
-  mask >> text >> nx;
-  mask >> text >> ny;
-  nz = 1;
+  char* c_filename = strdup(inFilename.c_str());
 
-  mask >> text >> text;
-  mask >> text >> text;
-  
-  mask >> text >> dx;
-  dy = dz = dx;
-  
-  mask >> text >> text;
+  databox = loadFile(c_filename);
+
+  nx = DataboxNx(databox);
+  ny = DataboxNy(databox);
+  nz = DataboxNz(databox);
+
+  dx = DataboxDx(databox);
+  dy = DataboxDy(databox);
+  dz = DataboxDz(databox);
 
   cout << "Domain Size = (" << nx << "," << ny << "," << nz << ")" << std::endl;
   cout << "Cell Size = (" << dx << "," << dy << "," << dz << ")" << std::endl;
@@ -193,10 +290,8 @@ int main(int argc, char **argv)
     for(int i = 0; i < nx; ++i)
     {
       double indicator;
-      mask >> indicator;
-      // ASC files are flipped around J axis from PF ordering
-      int flipped_j = (ny - 1) - j;
-      indicators[ triangleIndex(i,flipped_j,0) ] = indicator;
+      int k = 0;
+      indicators[ triangleIndex(i,j,0) ] = *(DataboxCoeff(databox, i, j, k));
     }
   }
 

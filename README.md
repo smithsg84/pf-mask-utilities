@@ -1,23 +1,4 @@
-
 # ParFlow Mask Utilities
-
-## ascmask-to-pfsol
-
-This utility is used to convert a 2D mask file describing a domain into a PFSOL file format.
-
-Currently only 3 patches are created, top, bottom and sides.
-
-The input mask is an ASC file format with the following format:
-
-ncols        4
-nrows        4
-xllcorner    0.0
-yllcorner    0.0
-cellsize     1.0
-NODATA_value  0.0
-<ncols * nrows values>
-
-A 0 value is outside the domain, a 1 value is inside the domain.
 
 ### Building
 
@@ -29,19 +10,31 @@ make test
 
 ### Usage
 
-ascmask-to-pfsol <asc mask input filename> <VTK output filename> <PFSOL output filename>
+mask-to-pfsol <mask input filename> <VTK output filename> <PFSOL output filename>
 
-## pfsol-to-vtk
+The mask input can be the standard file types supported by ParFlow, such as ParFlow binary, simple asci.
 
-This utility is used to convert a PFSOL file to a VTK for easier visualization.
+The mask input must be 2D with number of points in Z = 1;
 
-### Building
+The ASC file format is also supported.
 
-make
+The VTK file format includes the patch indices as data on the
+triangles making the patches viewable in many tools (such as Paraview, Visit).
 
-### Usage
+## ASC file format
 
-pfsol-to-vtk <PFSOL input filename> <VTK output filename>
+The input mask is an ASC file format with the following format:
+
+ncols        4
+nrows        4
+xllcorner    0.0
+yllcorner    0.0
+cellsize     1.0
+NODATA_value  0.0
+<ncols * nrows values>
+
+A 0 value is outside the domain, any other value is inside the domain.
+
 
 
 

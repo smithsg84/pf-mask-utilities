@@ -3,28 +3,31 @@ SHELL := /bin/bash
 TEST_FILES=$(wildcard tests/*.asc)
 TESTS=$(notdir $(sort $(subst .asc,.pfsol,$(TEST_FILES))))
 
-all : ascmask-to-pfsol pfsol-to-vtk maskdownsize
+all : mask-to-pfsol pfsol-to-vtk maskdownsize
 
-test: ascmask-to-pfsol pfsol-to-vtk maskdownsize
+test: mask-to-pfsol pfsol-to-vtk maskdownsize
 	rm -f $(TESTS)
 	make $(TESTS)
 
-%.pfsol: tests/%.asc ascmask-to-pfsol
-	./ascmask-to-pfsol $< $(patsubst %.pfsol,%.vtk,$@) $@ 
+%.pfsol: tests/%.asc mask-to-pfsol
+	./mask-to-pfsol $< $(patsubst %.pfsol,%.vtk,$@) $@ 
 	cmp $@ regression-test/$@
 	cmp $(patsubst %.pfsol,%.vtk,$@) regression-test/$(patsubst %.pfsol,%.vtk,$@)
 
 clean:
 	rm -f *.vtk *.pfsol
-	rm -f ascmask-to-pfsol
+	rm -f mask-to-pfsol
 	rm -f pfsol-to-vtk
 	rm -f maskdownsize
 
-ascmask-to-pfsol: ascmask-to-pfsol.cpp simplify.h
-	g++ -O3 -std=c++11 ascmask-to-pfsol.cpp -o ascmask-to-pfsol
+SRC=mask-to-pfsol.cpp readdatabox.c databox.c tools_io.c
+HEADERS=databox.h parflow_config.h readdatabox.h simplify.h tools_io.h
 
-maskdownsize: maskdownsize.cpp
-	g++ -O3 -std=c++11 maskdownsize.cpp -o maskdownsize
+mask-to-pfsol: $(SRC) $(HEADERS)
+	g++ -g -Wno-write-strings -std=c++11 $(SRC) -o mask-to-pfsol
+
+maskdownsize: maskdownsize.cpp 
+	g++ -g -std=c++11 maskdownsize.cpp -o maskdownsize
 
 pfsol-to-vtk: pfsol-to-vtk.c
 	gcc -O3  pfsol-to-vtk.c -o pfsol-to-vtk
