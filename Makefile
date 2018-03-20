@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 
-TEST_FILES=$(wildcard *.asc)
-TESTS=$(sort $(subst .asc,.pfsol,$(TEST_FILES)))
+TEST_FILES=$(wildcard tests/*.asc)
+TESTS=$(notdir $(sort $(subst .asc,.pfsol,$(TEST_FILES))))
 
 all : ascmask-to-pfsol pfsol-to-vtk maskdownsize
 
@@ -9,7 +9,7 @@ test: ascmask-to-pfsol pfsol-to-vtk maskdownsize
 	rm -f $(TESTS)
 	make $(TESTS)
 
-%.pfsol: %.asc ascmask-to-pfsol
+%.pfsol: tests/%.asc ascmask-to-pfsol
 	./ascmask-to-pfsol $< $(patsubst %.pfsol,%.vtk,$@) $@ 
 	cmp $@ regression-test/$@
 	cmp $(patsubst %.pfsol,%.vtk,$@) regression-test/$(patsubst %.pfsol,%.vtk,$@)
