@@ -2,6 +2,8 @@
 
 ### Building
 
+Requires C++ compiler.
+
 make
 
 ### Testing
@@ -10,16 +12,21 @@ make test
 
 ### Usage
 
-mask-to-pfsol <mask input filename> <VTK output filename> <PFSOL output filename>
+mask-to-pfsol <mask input filename> <VTK output filename> <PFSOL output filename> <bottom patch id> <side_patch id>
 
-The mask input can be the standard file types supported by ParFlow, such as ParFlow binary, simple asci.
+Creates a PFSOL file based on 2D mask input that defines the domain
+and patches on the top surface.  The domain is extruded in Z to form a
+3D domain.  The mask input file can be many of the standard file types
+supported by ParFlow, such as ParFlow binary or simple ASCI. The ASC
+file format is also supported.
+
+The bottom and side patches are labeled with the supplied patch id's.
 
 The mask input must be 2D with number of points in Z = 1;
 
-The ASC file format is also supported.
-
-The VTK file format includes the patch indices as data on the
-triangles making the patches viewable in many tools (such as Paraview, Visit).
+The VTK file output is also generated for easier visualization.  The
+VTK output includes the patch indices as data on the triangles making
+the patches viewable in many tools (such as Paraview, Visit).
 
 ## ASC file format
 

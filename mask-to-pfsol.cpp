@@ -256,9 +256,8 @@ int main(int argc, char **argv)
   string inFilename(argv[1]);
   string vtkOutFilename(argv[2]);
   string pfsolOutFilename(argv[3]);
-
-  int bottom = 2;
-  int side = 3;
+  int bottom = atoi(argv[4]);
+  int side = atoi(argv[5]);
 
   int nx, ny, nz;
   double sx = 0, sy = 0, sz = 0;
@@ -280,6 +279,8 @@ int main(int argc, char **argv)
 
   cout << "Domain Size = (" << nx << "," << ny << "," << nz << ")" << std::endl;
   cout << "Cell Size = (" << dx << "," << dy << "," << dz << ")" << std::endl;
+  cout << "Bottom patch = " << bottom << std::endl;
+  cout << "Side patch = " << side << std::endl;
 
   assert(nz == 1);
 

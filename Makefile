@@ -10,7 +10,7 @@ test: mask-to-pfsol pfsol-to-vtk maskdownsize
 	make $(TESTS)
 
 %.pfsol: tests/%.asc mask-to-pfsol
-	./mask-to-pfsol $< $(patsubst %.pfsol,%.vtk,$@) $@ 
+	./mask-to-pfsol $< $(patsubst %.pfsol,%.vtk,$@) $@ 2 3
 	cmp $@ regression-test/$@
 	cmp $(patsubst %.pfsol,%.vtk,$@) regression-test/$(patsubst %.pfsol,%.vtk,$@)
 
