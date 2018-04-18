@@ -30,6 +30,8 @@
 #include "error.h"
 #include "readdatabox.h"
 
+#include "tclap/CmdLine.h"
+
 #include <vector>
 #include <algorithm>
 #include <iostream>
@@ -225,7 +227,7 @@ Databox *loadFile(char* filename)
 
   if ((filetype = GetValidFileExtension(filename)) == (char*)NULL)
   {
-    std::cerr << "Invalid file extension" << std::endl;
+    std::cerr << "Invalid file extension on filename : " << filename << std::endl;
     exit(-1);
   }
   
@@ -250,14 +252,49 @@ Databox *loadFile(char* filename)
 
 }
 
-
 int main(int argc, char **argv)
 {
-  string inFilename(argv[1]);
-  string vtkOutFilename(argv[2]);
-  string pfsolOutFilename(argv[3]);
-  int bottom = atoi(argv[4]);
-  int side = atoi(argv[5]);
+
+  string inFilename;
+  string vtkOutFilename;
+  string pfsolOutFilename;
+  int bottom;
+  int side;
+
+  try {  
+
+    // Define the command line object.
+    TCLAP::CmdLine cmd("Convert mask files to pfsol file", ' ', "1.0");
+
+    TCLAP::ValueArg<string> inFilenameArg("m","mask","Mask filename",true,"mask.pfb","string");
+    cmd.add( inFilenameArg );
+
+    TCLAP::ValueArg<string> vtkOutFilenameArg("v","vtk","VTK ouput filename",true,"output.vtk","string");
+    cmd.add( vtkOutFilenameArg );
+
+    TCLAP::ValueArg<string> pfsolOutFilenameArg("s","pfsol","PFSOL ouput filename",true,"output.pfsol","string");
+    cmd.add( pfsolOutFilenameArg );
+
+    TCLAP::ValueArg<int> bottomArg("b","bottom","Bottom index",true,10,"int");
+    cmd.add( bottomArg );
+
+    TCLAP::ValueArg<int> sideArg("i","side","Side index",true,11,"int");
+    cmd.add( sideArg );
+
+    // Parse the args.
+    cmd.parse( argc, argv );
+
+    // Get the value parsed by each arg. 
+    inFilename = inFilenameArg.getValue();;
+    vtkOutFilename = vtkOutFilenameArg.getValue();
+    pfsolOutFilename = pfsolOutFilenameArg.getValue();
+    bottom = bottomArg.getValue();
+    side = sideArg.getValue();;
+  }
+  catch (TCLAP::ArgException &e)  // catch any exceptions
+  { 
+    cerr << "error: " << e.error() << " for arg " << e.argId() << endl; 
+  }
 
   int nx, ny, nz;
   double sx = 0, sy = 0, sz = 0;
@@ -266,6 +303,9 @@ int main(int argc, char **argv)
   Databox    *databox;
 
   char* c_filename = strdup(inFilename.c_str());
+
+  // patch_names = GetStringDefault(key,
+  // "left right front back bottom top");
 
   databox = loadFile(c_filename);
 
