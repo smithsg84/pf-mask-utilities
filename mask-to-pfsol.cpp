@@ -33,11 +33,30 @@
 #include "tclap/CmdLine.h"
 
 #include <vector>
+#include <set>
 #include <algorithm>
 #include <iostream>
 #include <fstream>
 #include <cassert>
 #include <cmath>
+
+/*
+ * The mask directions.
+ */
+std::vector<std::string> g_maskNames = {"top", "bottom", "left", "right", "front", "back"};
+
+#define TOP    0
+#define BOTTOM 1
+#define LEFT   2
+#define RIGHT  3
+#define FRONT  4
+#define BACK   5
+
+/*
+ * Keeps a record of all patch labels that have been seen.
+ */
+std::set<int> g_patchLabels;
+
 
 /* Function IsValidFileType - This function is used to make sure a given file */
 /* type is a valid one.                                                       */
@@ -144,8 +163,8 @@ void writePFSOL(string filename, vector<Simplify::Vertex>* vertices, vector<Simp
   // Number of patches
   
   // This looping is not very efficient but would require some extra data structures to eliminate.
-  pfsolFile << "3" << std::endl;
-  for(int patch = 1; patch < 4; ++patch)
+  pfsolFile << g_patchLabels.size() << std::endl;
+  for(auto patch : g_patchLabels)
   {
     int numTriangles = 0;
     for (auto it = triangles -> begin(); it != triangles -> end(); ++it)
@@ -252,19 +271,10 @@ Databox *loadFile(char* filename)
 
 }
 
-#define TOP    0
-#define BOTTOM 1
-#define LEFT   2
-#define RIGHT  3
-#define FRONT  4
-#define BACK   5
-
 int main(int argc, char **argv)
 {
-  std::vector<string> maskNames = {"top", "bottom", "left", "right", "front", "back"};
-
   bool singleMaskFile;
-  std::vector<string> inFilenames(maskNames.size());
+  std::vector<string> inFilenames(g_maskNames.size());
   string vtkOutFilename;
   string pfsolOutFilename;
   int bottom;
@@ -294,10 +304,10 @@ int main(int argc, char **argv)
     TCLAP::ValueArg<float> depthArg("","depth","Override depth from mask file",false,NAN,"float");
     cmd.add( depthArg );
 
-    TCLAP::ValueArg<string>* maskFilenamesArgs[maskNames.size()];
+    TCLAP::ValueArg<string>* maskFilenamesArgs[g_maskNames.size()];
 
     int index = 0;
-    for(auto maskName : maskNames)
+    for(auto maskName : g_maskNames)
     {
       string argName =  "mask-" + maskName;
       string help =  "Filename for " + maskName + " mask";
@@ -317,7 +327,7 @@ int main(int argc, char **argv)
     }
     else
     {
-      for(int i = 0; i < maskNames.size (); ++i)
+      for(int i = 0; i < g_maskNames.size (); ++i)
       {
 	inFilenames[i] = maskFilenamesArgs[i] -> getValue();
       }
@@ -448,7 +458,8 @@ int main(int argc, char **argv)
 	{
 	  Simplify::Triangle triangle;
 	  triangle.patch = indicator;
-	
+	  g_patchLabels.insert(triangle.patch);
+	  
 	  triangle.v[0] = vertexIndex(i,j,1);
 	  triangle.v[1]=  vertexIndex(i+1,j,1);
 	  triangle.v[2]=  vertexIndex(i+1,j+1,1);
@@ -471,6 +482,7 @@ int main(int argc, char **argv)
 	{
 	  Simplify::Triangle triangle;
 	  triangle.patch = indicators[BOTTOM][ triangleIndex(i,j,0) ];
+	  g_patchLabels.insert(triangle.patch);
 	
 	  triangle.v[0] = vertexIndex(i,j,0);
 	  triangle.v[1]=  vertexIndex(i+1,j+1,0);
@@ -495,6 +507,7 @@ int main(int argc, char **argv)
 	{
 	  Simplify::Triangle triangle;
 	  triangle.patch = indicators[LEFT][ triangleIndex(i,j,0) ];
+	  g_patchLabels.insert(triangle.patch);
 	
 	  triangle.v[0] = vertexIndex(i,j,0);
 	  triangle.v[1]=  vertexIndex(i,j,1);
@@ -519,6 +532,7 @@ int main(int argc, char **argv)
 	{
 	  Simplify::Triangle triangle;
 	  triangle.patch = indicators[RIGHT][ triangleIndex(i,j,0) ];
+	  g_patchLabels.insert(triangle.patch);
 	
 	  triangle.v[0]=  vertexIndex(i+1,j+1,0);
 	  triangle.v[1]=  vertexIndex(i+1,j,1);
@@ -543,6 +557,7 @@ int main(int argc, char **argv)
 	{
 	  Simplify::Triangle triangle;
 	  triangle.patch = indicators[FRONT][ triangleIndex(i,j,0) ];
+	  g_patchLabels.insert(triangle.patch);
 	
 	  triangle.v[0] = vertexIndex(i,j,0);
 	  triangle.v[1]=  vertexIndex(i+1,j,0);
@@ -567,6 +582,7 @@ int main(int argc, char **argv)
 	{
 	  Simplify::Triangle triangle;
 	  triangle.patch = indicators[BACK][ triangleIndex(i,j,0) ];
+	  g_patchLabels.insert(triangle.patch);
 	
 	  triangle.v[2] = vertexIndex(i,j+1,0);
 	  triangle.v[1]=  vertexIndex(i+1,j+1,0);
