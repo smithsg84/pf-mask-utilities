@@ -52,7 +52,16 @@ mask-to-pfsol
 
 Each of the mask values is used to label the external boundary patches
 based on the value.  This enables the sides and bottom to have a more
-complex patch labeling.
+complex patch labeling.   Faces are along each axis:
+
+Top    +Z
+Bottom -Z
+
+Right  +X
+Left   -X
+
+Front  -Y
+Back   +Y
 
 Each mask file should be the same dimensions in X and Y and have
 number of points in Z = 1.
