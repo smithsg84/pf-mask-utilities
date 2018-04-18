@@ -276,10 +276,10 @@ int main(int argc, char **argv)
     TCLAP::ValueArg<string> pfsolOutFilenameArg("s","pfsol","PFSOL ouput filename",true,"output.pfsol","string");
     cmd.add( pfsolOutFilenameArg );
 
-    TCLAP::ValueArg<int> bottomArg("b","bottom","Bottom index",true,10,"int");
+    TCLAP::ValueArg<int> bottomArg("b","bottom","Bottom index",true,2,"int");
     cmd.add( bottomArg );
 
-    TCLAP::ValueArg<int> sideArg("i","side","Side index",true,11,"int");
+    TCLAP::ValueArg<int> sideArg("i","side","Side index",true,3,"int");
     cmd.add( sideArg );
 
     TCLAP::ValueArg<float> depthArg("d","depth","Override depth from mask file",false,NAN,"float");
