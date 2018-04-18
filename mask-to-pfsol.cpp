@@ -252,10 +252,19 @@ Databox *loadFile(char* filename)
 
 }
 
+#define TOP    0
+#define BOTTOM 1
+#define LEFT   2
+#define RIGHT  3
+#define FRONT  4
+#define BACK   5
+
 int main(int argc, char **argv)
 {
+  std::vector<string> maskNames = {"top", "bottom", "left", "right", "front", "back"};
 
-  string inFilename;
+  bool singleMaskFile;
+  std::vector<string> inFilenames(maskNames.size());
   string vtkOutFilename;
   string pfsolOutFilename;
   int bottom;
@@ -267,34 +276,59 @@ int main(int argc, char **argv)
     // Define the command line object.
     TCLAP::CmdLine cmd("Convert mask files to pfsol file", ' ', "1.0");
 
-    TCLAP::ValueArg<string> inFilenameArg("m","mask","Mask filename",true,"mask.pfb","string");
+    TCLAP::ValueArg<string> inFilenameArg("","mask","Mask filename",false,"mask.pfb","string");
     cmd.add( inFilenameArg );
 
-    TCLAP::ValueArg<string> vtkOutFilenameArg("v","vtk","VTK ouput filename",true,"output.vtk","string");
+    TCLAP::ValueArg<string> vtkOutFilenameArg("","vtk","VTK ouput filename",false,"output.vtk","string");
     cmd.add( vtkOutFilenameArg );
 
-    TCLAP::ValueArg<string> pfsolOutFilenameArg("s","pfsol","PFSOL ouput filename",true,"output.pfsol","string");
+    TCLAP::ValueArg<string> pfsolOutFilenameArg("","pfsol","PFSOL ouput filename",true,"output.pfsol","string");
     cmd.add( pfsolOutFilenameArg );
 
-    TCLAP::ValueArg<int> bottomArg("b","bottom","Bottom index",true,2,"int");
+    TCLAP::ValueArg<int> bottomArg("","bottom-patch-label","Bottom index",false,2,"int");
     cmd.add( bottomArg );
 
-    TCLAP::ValueArg<int> sideArg("i","side","Side index",true,3,"int");
+    TCLAP::ValueArg<int> sideArg("","side-patch-label","Side index",false,3,"int");
     cmd.add( sideArg );
 
-    TCLAP::ValueArg<float> depthArg("d","depth","Override depth from mask file",false,NAN,"float");
+    TCLAP::ValueArg<float> depthArg("","depth","Override depth from mask file",false,NAN,"float");
     cmd.add( depthArg );
+
+    TCLAP::ValueArg<string>* maskFilenamesArgs[maskNames.size()];
+
+    int index = 0;
+    for(auto maskName : maskNames)
+    {
+      string argName =  "mask-" + maskName;
+      string help =  "Filename for " + maskName + " mask";
+      maskFilenamesArgs[index] = new TCLAP::ValueArg<string>("", argName, help, false, "", "string");
+      cmd.add( maskFilenamesArgs[index++] );
+    }
 
     // Parse the args.
     cmd.parse( argc, argv );
 
+    singleMaskFile = inFilenameArg.isSet();
+
     // Get the value parsed by each arg. 
-    inFilename = inFilenameArg.getValue();;
+    if (singleMaskFile)
+    {
+      inFilenames[0] = inFilenameArg.getValue();;
+    }
+    else
+    {
+      for(int i = 0; i < maskNames.size (); ++i)
+      {
+	inFilenames[i] = maskFilenamesArgs[i] -> getValue();
+      }
+    }
+
     vtkOutFilename = vtkOutFilenameArg.getValue();
     pfsolOutFilename = pfsolOutFilenameArg.getValue();
     bottom = bottomArg.getValue();
     side = sideArg.getValue();;
     depth = depthArg.getValue();;
+
   }
   catch (TCLAP::ArgException &e)  // catch any exceptions
   { 
@@ -305,25 +339,34 @@ int main(int argc, char **argv)
   double sx = 0, sy = 0, sz = 0;
   double dx, dy, dz;
 
-  Databox    *databox;
-
-  char* c_filename = strdup(inFilename.c_str());
+  std::vector<Databox*> databox(inFilenames[0].size());
 
   // patch_names = GetStringDefault(key,
   // "left right front back bottom top");
+  if (singleMaskFile)
+  {
+    char* c_filename = strdup(inFilenames[0].c_str());
+    databox[0] = loadFile(c_filename);
+  } 
+  else
+  {
+    for(int i = 0; i < inFilenames.size (); ++i)
+    {
+      char* c_filename = strdup(inFilenames[i].c_str());
+      databox[i] = loadFile(c_filename);
+    }
+  }
 
-  databox = loadFile(c_filename);
+  nx = DataboxNx(databox[0]);
+  ny = DataboxNy(databox[0]);
+  nz = DataboxNz(databox[0]);
 
-  nx = DataboxNx(databox);
-  ny = DataboxNy(databox);
-  nz = DataboxNz(databox);
-
-  dx = DataboxDx(databox);
-  dy = DataboxDy(databox);
+  dx = DataboxDx(databox[0]);
+  dy = DataboxDy(databox[0]);
 
   if(isnan(depth))
   {
-    dz = DataboxDz(databox);
+    dz = DataboxDz(databox[0]);
   }
   else
   {
@@ -336,15 +379,36 @@ int main(int argc, char **argv)
 
   assert(nz == 1);
 
-  vector<int> indicators(nx*ny);
+  vector< vector<int> > indicators;
+
+  indicators.resize(inFilenames.size ());
+  for(int i = 0; i < inFilenames.size (); ++i)
+  {
+    indicators[i].resize(nx*ny);
+  }
 
   for(int j = 0; j < ny; ++j)
   {
     for(int i = 0; i < nx; ++i)
     {
-      double indicator;
       int k = 0;
-      indicators[ triangleIndex(i,j,0) ] = *(DataboxCoeff(databox, i, j, k));
+      if (singleMaskFile)
+      {
+	indicators[TOP][ triangleIndex(i,j,0) ] = *(DataboxCoeff(databox[TOP], i, j, k));
+	indicators[BOTTOM][ triangleIndex(i,j,0) ] = bottom;
+	indicators[LEFT][ triangleIndex(i,j,0) ] = side;
+	indicators[RIGHT][ triangleIndex(i,j,0) ] = side;
+	indicators[FRONT][ triangleIndex(i,j,0) ] = side;
+	indicators[BACK][ triangleIndex(i,j,0) ] = side;
+	
+      }
+      else 
+      {
+	for(int index = 0; index < indicators.size (); ++index)
+	{
+	  indicators[index][ triangleIndex(i,j,0) ] = *(DataboxCoeff(databox[index], i, j, k));
+	}
+      }
     }
   }
 
@@ -375,140 +439,141 @@ int main(int argc, char **argv)
   {
     for(int i = 0; i < nx; ++i)
     {
-      int indicator = indicators[ triangleIndex(i,j,0) ];
-
-      if (indicator != 0 )
+      // Use Top to determine domain;
+      int indicator = indicators[0][ triangleIndex(i,j,0) ];
+      
+      if (indicator != 0) 
       {
 	// Top
 	{
 	  Simplify::Triangle triangle;
 	  triangle.patch = indicator;
-
+	
 	  triangle.v[0] = vertexIndex(i,j,1);
 	  triangle.v[1]=  vertexIndex(i+1,j,1);
 	  triangle.v[2]=  vertexIndex(i+1,j+1,1);
-	  
+	
 	  triangles -> push_back(triangle);
-	  
+	
 	  triangle.v[0] = vertexIndex(i,j,1);
 	  triangle.v[1]=  vertexIndex(i+1,j+1,1);
 	  triangle.v[2]=  vertexIndex(i,j+1,1);
-
+	
 	  triangles -> push_back(triangle);
-
+	
 	  (*vertices)[ vertexIndex(i,j,1)].used = true;
 	  (*vertices)[ vertexIndex(i+1,j,1)].used = true;
 	  (*vertices)[ vertexIndex(i,j+1,1)].used = true;
 	  (*vertices)[ vertexIndex(i+1,j+1,1)].used = true;
 	}
-
+      
 	// Bottom
 	{
 	  Simplify::Triangle triangle;
-	  triangle.patch = bottom;
-
+	  triangle.patch = indicators[BOTTOM][ triangleIndex(i,j,0) ];
+	
 	  triangle.v[0] = vertexIndex(i,j,0);
 	  triangle.v[1]=  vertexIndex(i+1,j+1,0);
 	  triangle.v[2]=  vertexIndex(i+1,j,0);
-	  
+	
 	  triangles -> push_back(triangle);
-
+	
 	  triangle.v[0] = vertexIndex(i,j,0);
 	  triangle.v[1]=  vertexIndex(i,j+1,0);	  
 	  triangle.v[2]=  vertexIndex(i+1,j+1,0);
-
+	
 	  triangles -> push_back(triangle);
-
+	
 	  (*vertices)[ vertexIndex(i,j,0)].used = true;
 	  (*vertices)[ vertexIndex(i+1,j,0)].used = true;
 	  (*vertices)[ vertexIndex(i,j+1,0)].used = true;
 	  (*vertices)[ vertexIndex(i+1,j+1,0)].used = true;
 	}
-
+      
 	// Left
-	if ( (i == 0) || (indicators[ triangleIndex(i-1,j,0) ] == 0) )
+	if ( (i == 0) || (indicators[0][ triangleIndex(i-1,j,0) ] == 0) )
 	{
 	  Simplify::Triangle triangle;
-	  triangle.patch = side;
-
+	  triangle.patch = indicators[LEFT][ triangleIndex(i,j,0) ];
+	
 	  triangle.v[0] = vertexIndex(i,j,0);
 	  triangle.v[1]=  vertexIndex(i,j,1);
 	  triangle.v[2]=  vertexIndex(i,j+1,0);
-	  
+	
 	  triangles -> push_back(triangle);
-
+	
 	  triangle.v[0] = vertexIndex(i,j,1);
 	  triangle.v[1]=  vertexIndex(i,j+1,1);
 	  triangle.v[2]=  vertexIndex(i,j+1,0);
-
+	
 	  triangles -> push_back(triangle);
-
+	
 	  (*vertices)[ vertexIndex(i,j,0)].used = true;
 	  (*vertices)[ vertexIndex(i,j,1)].used = true;
 	  (*vertices)[ vertexIndex(i,j+1,0)].used = true;
 	  (*vertices)[ vertexIndex(i,j+1,1)].used = true;
 	}
-
+      
 	// Right
-	if ( (i == (nx - 1)) || (indicators[ triangleIndex(i+1,j,0) ] == 0) )
+	if ( (i == (nx - 1)) || (indicators[0][ triangleIndex(i+1,j,0) ] == 0) )
 	{
 	  Simplify::Triangle triangle;
-	  triangle.patch = side;
-
+	  triangle.patch = indicators[RIGHT][ triangleIndex(i,j,0) ];
+	
 	  triangle.v[0]=  vertexIndex(i+1,j+1,0);
 	  triangle.v[1]=  vertexIndex(i+1,j,1);
 	  triangle.v[2] = vertexIndex(i+1,j,0);
-	  
+	
 	  triangles -> push_back(triangle);
-
+	
 	  triangle.v[0] = vertexIndex(i+1,j,1);
 	  triangle.v[1]=  vertexIndex(i+1,j+1,0);
 	  triangle.v[2]=  vertexIndex(i+1,j+1,1);
-
+	
 	  triangles -> push_back(triangle);
-
+	
 	  (*vertices)[ vertexIndex(i+1,j,0)].used = true;
 	  (*vertices)[ vertexIndex(i+1,j,1)].used = true;
 	  (*vertices)[ vertexIndex(i+1,j+1,0)].used = true;
 	  (*vertices)[ vertexIndex(i+1,j+1,1)].used = true;
 	}
-
+      
 	// Front
-	if ( (j==0) || (indicators[ triangleIndex(i,j-1,0) ] == 0) )
+	if ( (j==0) || (indicators[0][ triangleIndex(i,j-1,0) ] == 0) )
 	{
 	  Simplify::Triangle triangle;
-	  triangle.patch = side;
-
+	  triangle.patch = indicators[FRONT][ triangleIndex(i,j,0) ];
+	
 	  triangle.v[0] = vertexIndex(i,j,0);
 	  triangle.v[1]=  vertexIndex(i+1,j,0);
 	  triangle.v[2]=  vertexIndex(i+1,j,1);
-	  
+	
 	  triangles -> push_back(triangle);
-
+	
 	  triangle.v[0] = vertexIndex(i,j,0);
 	  triangle.v[1]=  vertexIndex(i+1,j,1);
 	  triangle.v[2]=  vertexIndex(i,j,1);
-
+	
 	  triangles -> push_back(triangle);
-
+	
 	  (*vertices)[ vertexIndex(i,j,0)].used = true;
 	  (*vertices)[ vertexIndex(i,j,1)].used = true;
 	  (*vertices)[ vertexIndex(i+1,j,1)].used = true;
 	  (*vertices)[ vertexIndex(i+1,j,1)].used = true;
 	}
-
+      
 	// Back
-	if ( (j == (ny - 1)) || (indicators[ triangleIndex(i,j+1,0) ] == 0) )
+	if ( (j == (ny - 1)) || (indicators[0][ triangleIndex(i,j+1,0) ] == 0) )
 	{
 	  Simplify::Triangle triangle;
-	  triangle.patch = side;
-
+	  triangle.patch = indicators[BACK][ triangleIndex(i,j,0) ];
+	
 	  triangle.v[2] = vertexIndex(i,j+1,0);
 	  triangle.v[1]=  vertexIndex(i+1,j+1,0);
 	  triangle.v[0]=  vertexIndex(i+1,j+1,1);
-	  
+	
 	  triangles -> push_back(triangle);
-
+	
 	  triangle.v[2] = vertexIndex(i,j+1,0);
 	  triangle.v[1]=  vertexIndex(i+1,j+1,1);
 	  triangle.v[0]=  vertexIndex(i,j+1,1);
