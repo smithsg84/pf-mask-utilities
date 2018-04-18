@@ -1,16 +1,21 @@
 SHELL := /bin/bash
 
-TEST_FILES=$(wildcard tests/*.asc)
-TESTS=$(notdir $(sort $(subst .asc,.pfsol,$(TEST_FILES))))
+MASK_TEST_FILES=$(wildcard tests/mask-test*.asc)
+MASK_TESTS=$(notdir $(sort $(subst .asc,.pfsol,$(MASK_TEST_FILES))))
+
+DEPTH_TEST_FILES=$(wildcard tests/depth-test*.asc)
+DEPTH_TESTS=$(notdir $(sort $(subst .asc,.pfsol,$(DEPTH_TEST_FILES))))
 
 all : mask-to-pfsol pfsol-to-vtk maskdownsize
 
 test: mask-to-pfsol pfsol-to-vtk maskdownsize
-	rm -f $(TESTS)
-	make $(TESTS)
+	rm -f $(MASK_TESTS)
+	make $(MASK_TESTS)
+	rm -f $(DEPTH_TESTS)
+	make TEST_ARGS="--depth 1000.0" $(DEPTH_TESTS)
 
 %.pfsol: tests/%.asc mask-to-pfsol
-	./mask-to-pfsol --mask $< --vtk $(patsubst %.pfsol,%.vtk,$@) --pfsol $@ --bottom 2 --side 3
+	./mask-to-pfsol --mask $< --vtk $(patsubst %.pfsol,%.vtk,$@) --pfsol $@ --bottom 2 --side 3 $(TEST_ARGS)
 	cmp $@ regression-test/$@
 	cmp $(patsubst %.pfsol,%.vtk,$@) regression-test/$(patsubst %.pfsol,%.vtk,$@)
 

@@ -37,7 +37,7 @@
 #include <iostream>
 #include <fstream>
 #include <cassert>
-
+#include <cmath>
 
 /* Function IsValidFileType - This function is used to make sure a given file */
 /* type is a valid one.                                                       */
@@ -260,6 +260,7 @@ int main(int argc, char **argv)
   string pfsolOutFilename;
   int bottom;
   int side;
+  float depth;
 
   try {  
 
@@ -281,6 +282,9 @@ int main(int argc, char **argv)
     TCLAP::ValueArg<int> sideArg("i","side","Side index",true,11,"int");
     cmd.add( sideArg );
 
+    TCLAP::ValueArg<float> depthArg("d","depth","Override depth from mask file",false,NAN,"float");
+    cmd.add( depthArg );
+
     // Parse the args.
     cmd.parse( argc, argv );
 
@@ -290,6 +294,7 @@ int main(int argc, char **argv)
     pfsolOutFilename = pfsolOutFilenameArg.getValue();
     bottom = bottomArg.getValue();
     side = sideArg.getValue();;
+    depth = depthArg.getValue();;
   }
   catch (TCLAP::ArgException &e)  // catch any exceptions
   { 
@@ -315,8 +320,15 @@ int main(int argc, char **argv)
 
   dx = DataboxDx(databox);
   dy = DataboxDy(databox);
-  dz = DataboxDz(databox);
 
+  if(isnan(depth))
+  {
+    dz = DataboxDz(databox);
+  }
+  else
+  {
+    dz = depth;
+  }
   cout << "Domain Size = (" << nx << "," << ny << "," << nz << ")" << std::endl;
   cout << "Cell Size = (" << dx << "," << dy << "," << dz << ")" << std::endl;
   cout << "Bottom patch = " << bottom << std::endl;
