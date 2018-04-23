@@ -27,7 +27,6 @@
  **********************************************************************EHEADER*/
 
 #include "simplify.h"
-#include "error.h"
 #include "readdatabox.h"
 
 #include "tclap/CmdLine.h"
