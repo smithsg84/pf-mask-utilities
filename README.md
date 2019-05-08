@@ -1,5 +1,7 @@
 # ParFlow Mask Utilities
 
+These utilities have been moved to the main Parflow repository and built when parflow is built.
+
 ## Building
 
 Requires C++ compiler.
